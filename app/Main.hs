@@ -7,7 +7,10 @@ find :: Int -> T.Text
 find x | x == 1    = "hello world"
        | otherwise = "not found"
 
-main = scotty 3000 $
-  get "/get/:id" $ do
-    id <- param "id"
-    html $ find id
+main = scotty 3000 $ do
+    get "/get/:id" $ do
+      id <- param "id"
+      text $ find id
+
+    get "/" $ do
+      text $ "oh hai"
