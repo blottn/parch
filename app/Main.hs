@@ -2,10 +2,14 @@
 
 import Web.Scotty
 import qualified Data.Text.Lazy as T
+import qualified Text.Blaze.Html5 as H
 
 getPost :: Int -> T.Text
-getPost x | x == 1    = "hello world"
-       | otherwise = "not found"
+getPost x = posts !! x
+
+posts = "hello world":"voila":[]
+
+
 
 index :: ActionM()
 index = html "<h1> Welcome to parch! </h1>"
