@@ -49,6 +49,9 @@ executable parch-exe
     , scotty
     , blaze-html
     , blaze-markup
+    , filepath
+    , directory
+    , time
   default-language: Haskell2010
 
 test-suite parch-test
