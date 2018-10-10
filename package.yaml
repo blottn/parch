@@ -25,6 +25,10 @@ dependencies:
 - blaze-markup
 - directory
 - filepath
+- scotty
+- time
+- text
+
 
 library:
   source-dirs: src
