@@ -42,7 +42,6 @@ loginPage False = S.html "not logged in"
 auth :: Text -> Text -> S.ActionM()
 auth "admin" "pass" = do 
                         S.text "success"
-                        c.makeSimpleCookie "auth" "y"
 auth _ _ = S.text "oh no"
 
 main = S.scotty 3000 $ do
