@@ -18,19 +18,7 @@ import Data.Time
 
 -- Data types:
 
-data Post = Post
-    { id :: Int,
-      time :: UTCTime,
-      title :: String,
-      content :: String
-    } deriving (Read, Show)
-
-getPost :: Int -> S.ActionM ()
-getPost id = S.text (posts !! id)
-
-
-
-posts = "hello world":"voila":[]
+archive = "archive"
 
 index :: S.ActionM()
 index = S.html . renderHtml $ do
@@ -39,14 +27,14 @@ index = S.html . renderHtml $ do
           H.body $ do
             H.h1 $ toHtml $ text "Parch blog site"
             H.p $ toHtml $ text "here's a paragraph"
-            
-          
 
 main = S.scotty 3000 $ do
-    S.get "/get/:id" $ do
-      id <- S.param "id"
-      getPost id
-
     S.get "/" $ do
       index
-   
+    S.get "/get/:id" $ do
+      postid <- S.param "id"
+      post <- liftIO $ do
+        wd <- getCurrentDirectory
+        post <- withCurrentDirectory (wd </> archive) $ readFile $ fromString postid
+        return post
+      S.html $ fromString post
