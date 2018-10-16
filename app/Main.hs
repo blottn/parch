@@ -59,12 +59,20 @@ auth "admin" "pass" = do
                         S.text "success"                        
 auth _ _ = S.text "oh no"
 
---postCollectionPage :: [(Filepath, UTCTime)] -> H.Html
---postCollectionPage ((fp,time):[]) =
+postCollectionPage :: [(FilePath, UTCTime)] -> H.Html
+postCollectionPage x = H.ul $ postList x
+
+postList :: [(FilePath, UTCTime)] -> H.Html
+postList ((f,time) : []) = H.li "final thing"
+postList ((f,time) : remainder) = do
+                                    H.li "a first thing"
+                                    postList remainder
+                                
 
 conjoin :: FilePath -> IO((FilePath, UTCTime))
 conjoin x = do 
-              time <- getModificationTime x
+              wd <- getCurrentDirectory
+              time <- withCurrentDirectory (wd </> archive) $ getModificationTime x
               return (x, time)
 
 postCompare :: (FilePath, UTCTime) -> (FilePath, UTCTime) -> Ordering
@@ -73,7 +81,7 @@ postCompare (_,x) (_,y) = compare x y
 getAllPosts :: IO ([(FilePath, UTCTime)])
 getAllPosts = do
                 dir <- getCurrentDirectory
-                contents <- getDirectoryContents $ dir </> archive
+                contents <- listDirectory $ dir </> archive
                 files <- mapM conjoin contents
                 return $ sortBy postCompare files
 
@@ -83,7 +91,7 @@ main = S.scotty 3000 $ do
 
     S.get "/all" $ do
       files <- liftIO $ getAllPosts
-      S.html $ fromString "asdf"
+      S.html . renderHtml $ postCollectionPage files
 
     S.get "/recents" $ do
       S.html "TODO"
