@@ -3,6 +3,7 @@ module Main( main) where
 
 import Control.Monad.IO.Class
 import qualified Web.Scotty as S
+import qualified Web.Scotty.Cookie as C
 import Text.Blaze.Html
 import Text.Blaze.Html.Renderer.Text
 import qualified Text.Blaze.Html5 as H
@@ -26,8 +27,23 @@ index = S.html . renderHtml $ do
             H.h1 "Parch blog site"
             H.h2 "Contents"
             H.ul $ do
-                H.li $ H.a ! A.href "/get/blog" $ "my link"
-                H.li $ "another asdf"
+                linesToHtml ["Blog!","recents", "login", "new post", "all"] ["/get/blog", "/recents", "/login", "/post", "/all" ]
+
+listlink :: String -> AttributeValue -> H.Html
+listlink x y = H.li $ H.a ! A.href y $ fromString x
+
+
+linesToHtml :: [String] -> [AttributeValue] -> H.Html
+linesToHtml (x:[]) (y:[]) = listlink x y
+linesToHtml (x:xs) (y:ys) = do 
+                              listlink x y
+                              linesToHtml xs ys
+                                
+
+                            
+            
+
+
 
 loginPage :: Bool -> S.ActionM()
 loginPage True = S.html . renderHtml $ do
@@ -40,13 +56,18 @@ loginPage True = S.html . renderHtml $ do
 loginPage False = S.html "not logged in"
 
 auth :: Text -> Text -> S.ActionM()
-auth "admin" "pass" = do 
+auth "admin" "pass" = do
+                        C.setSimpleCookie "auth" "y" 
                         S.text "success"
+                        
 auth _ _ = S.text "oh no"
 
 main = S.scotty 3000 $ do
     S.get "/" $ do
       index
+
+    S.get "/all" $ do
+      S.html $ fromString "asdf"
 
     S.get "/recents" $ do
       S.html "TODO"
@@ -63,7 +84,7 @@ main = S.scotty 3000 $ do
         return post
       S.html $ fromString post
 
-    S.get "/auth/:name/:pass" $ do
+    S.get "/auth?name=:name&pass=:pass" $ do
       name <- S.param "name"
       pass <- S.param "pass"
       auth name pass
