@@ -27,7 +27,7 @@ index = S.html . renderHtml $ do
           H.body $ do
             H.h1 "Parch blog site"
             H.h2 "Contents"
-            H.ul $ do
+            H.ul $ do --TODO convert to tuples
                 linesToHtml ["Blog!","recents", "login", "new post", "all"] ["/get/blog", "/recents", "/login", "/post", "/all" ]
 
 listlink :: String -> AttributeValue -> H.Html
@@ -41,6 +41,8 @@ linesToHtml (x:xs) (y:ys) = do
                               linesToHtml xs ys
                                 
 
+renderPath :: FilePath -> H.Html
+renderPath f = H.li $ H.a ! A.href (fromString ("/get/" ++ (fromString $ takeFileName f))) $ (fromString $ takeBaseName f)
 
 
 loginPage :: Bool -> S.ActionM()
@@ -66,15 +68,12 @@ conjoin x = do
               time <- withCurrentDirectory (wd </> archive) $ getModificationTime x
               return (x, time)
 
-postCompare :: (FilePath, UTCTime) -> (FilePath, UTCTime) -> Ordering
-postCompare (_,x) (_,y) = compare x y
-
 getAllPosts :: IO ([(FilePath, UTCTime)])
 getAllPosts = do
                 dir <- getCurrentDirectory
                 contents <- listDirectory $ dir </> archive
                 files <- mapM conjoin contents
-                return $ sortBy postCompare files
+                return $ sortBy (\(_,x) (_,y) -> compare x y) files
 
 main = S.scotty 3000 $ do
     S.get "/" $ do
@@ -82,9 +81,10 @@ main = S.scotty 3000 $ do
 
     S.get "/all" $ do
       files <- liftIO $ getAllPosts
-      S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> H.li $ takeBaseName f) files
+      S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> renderPath f) files
 
     S.get "/recents" $ do
+      files <- liftIO $ getAllPosts
       S.html "TODO"
 
     S.get "/login/:debug" $ do
