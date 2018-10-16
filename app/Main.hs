@@ -82,7 +82,7 @@ main = S.scotty 3000 $ do
 
     S.get "/all" $ do
       files <- liftIO $ getAllPosts
-      S.html . renderHtml $ H.ul $ mapM_ (\(_,a) -> H.li "lol") files
+      S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> H.li $ takeBaseName f) files
 
     S.get "/recents" $ do
       S.html "TODO"
