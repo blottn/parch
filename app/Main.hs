@@ -74,8 +74,8 @@ auth _ _ = S.text "incorrect"
 
 conjoin :: FilePath -> IO (FilePath, UTCTime)
 conjoin x = do
-              wd <- getCurrentDirectory
-              time <- withCurrentDirectory (wd </> archive) $ getModificationTime x
+              dir <- getCurrentDirectory
+              time <- getModificationTime (dir </> archive </> x)
               return (x, time)
 
 getPosts :: IO [(FilePath,UTCTime)]
@@ -108,8 +108,8 @@ postPage (Just "y") = S.html . renderHtml $ do
 
 mkpost :: String -> String -> IO ()
 mkpost title content = do
-                        wd <- getCurrentDirectory
-                        writeFile (wd </> archive </> title) content
+                        dir <- getCurrentDirectory
+                        writeFile (dir </> archive </> title) content
 
 main = S.scotty 3000 $ do
     S.get "/" index
@@ -137,8 +137,8 @@ main = S.scotty 3000 $ do
     S.get "/get/:id" $ do
       postid <- S.param "id"
       post <- liftIO $ do
-        wd <- getCurrentDirectory
-        withCurrentDirectory (wd </> archive) $ readFile $ fromString postid
+        dir <- getCurrentDirectory
+        readFile (dir </> archive </> postid)
       S.text $ fromString post
 
     S.get "/post" $ do
@@ -157,5 +157,7 @@ main = S.scotty 3000 $ do
       S.html "posted"
 
     S.get "/success" $ S.html . renderHtml $ do
-                            H.head $ H.title "You successfully did something!"
-                            H.body $ H.a ! A.href "/" $ "Home"
+                            H.head $ H.title "Success!"
+                            H.body $ do
+                                H.h1 $ "Success!"
+                                H.a ! A.href "/" $ "Home"
