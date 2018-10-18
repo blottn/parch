@@ -25,44 +25,43 @@ pages = [("Blog!","/get/blog"),("recents","/recents"),("login","/login"), ("new 
 
 index :: S.ActionM()
 index = S.html . renderHtml $ do
-          H.head $ do
-            H.title "Parch"
+          H.head $ H.title "Parch"
           H.body $ do
             H.h1 "Parch blog site"
             H.h2 "Contents"
-            H.ul $ do
-                linesToHtml pages
+            H.ul $ linesToHtml pages
+
 listlink :: String -> AttributeValue -> H.Html
 listlink x y = H.li $ H.a ! A.href y $ fromString x
 
 
 linesToHtml :: [(String,AttributeValue)] -> H.Html
-linesToHtml ((x,y):[])= listlink x y
+linesToHtml [(x,y)]= listlink x y
 linesToHtml ((x,y):rest) = do
                               listlink x y
                               linesToHtml rest
 
 
 renderPath :: FilePath -> H.Html
-renderPath f = H.li $ H.a ! A.href (fromString ("/get/" ++ (fromString $ takeFileName f))) $ (fromString $ takeBaseName f)
+renderPath f = H.li $ H.a ! A.href (fromString ("/get/" ++ fromString ( takeFileName f))) $ fromString ( takeBaseName f)
 
 
-loginPage :: (Maybe Text) -> S.ActionM()
+loginPage :: Maybe Text -> S.ActionM()
 loginPage (Just "y") = S.html . renderHtml $ do
-                              H.head $ do
-                                H.title "Parch - login"
+                              H.head $ H.title "Parch - login"
                               H.body $ do
                                 H.p "Already logged in!"
                                 H.a ! A.href "/" $ "home"
 
 loginPage Nothing = S.html . renderHtml $ do
-                            H.head $ do
-                              H.title "Parch - login"
+                            H.head $ H.title "Parch - login"
                             H.body $ do
                               H.a ! A.href "/" $ "home"
                               H.form ! A.action "/auth" ! A.method "post" $ do
-                                H.input ! A.type_ "text" ! A.name "name"
-                                H.input ! A.type_ "password" ! A.name "pass"
+                                H.input ! A.type_ "text" ! A.placeholder "username" ! A.name "name"
+                                H.br
+                                H.input ! A.type_ "password" ! A.placeholder "password" ! A.name "pass"
+                                H.br
                                 H.input ! A.type_ "submit"
 
 
@@ -73,33 +72,51 @@ auth "admin" "pass" = do
 auth _ _ = S.text "oh no"
 
 
-conjoin :: FilePath -> IO((FilePath, UTCTime))
+conjoin :: FilePath -> IO (FilePath, UTCTime)
 conjoin x = do
               wd <- getCurrentDirectory
               time <- withCurrentDirectory (wd </> archive) $ getModificationTime x
               return (x, time)
 
-getAllPosts :: IO ([(FilePath, UTCTime)])
+getPosts :: IO [(FilePath,UTCTime)]
+getPosts = do
+            dir <- getCurrentDirectory
+            contents <- listDirectory $ dir </> archive
+            mapM conjoin contents
+
+getAllPosts :: IO [(FilePath, UTCTime)]
 getAllPosts = do
-                dir <- getCurrentDirectory
-                contents <- listDirectory $ dir </> archive
-                files <- mapM conjoin contents
+                files <- getPosts
                 return $ sortBy (\(_,x) (_,y) -> compare x y) files
 
+getRecentPosts :: S.ActionM [(FilePath, UTCTime)]
+getRecentPosts = liftIO  $ do
+                            files <- getPosts
+                            return $ take 5 $ sortBy (\(_,x) (_,y) -> compare x y) files
+
+postPage :: Maybe Text -> S.ActionM ()
+postPage Nothing = S.redirect "/"
+postPage (Just "y") = S.html . renderHtml $ do
+                                            H.head $ H.title "Parch - Create Post"
+                                            H.body $ do
+                                              H.h1 "Create Post"
+                                              H.form $ do
+                                                H.input ! A.type_ "text" ! A.placeholder "title"
+                                                H.br
+                                                H.input ! A.type_ "text" ! A.placeholder "post"
+
 main = S.scotty 3000 $ do
-    S.get "/" $ do
-      index
+    S.get "/" index
 
     S.get "/all" $ do
-      files <- liftIO $ getAllPosts
-      S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> renderPath f) files
+      posts <- liftIO getAllPosts
+      S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> renderPath f) posts
 
     S.get "/recents" $ do
-      files <- liftIO $ getAllPosts
-      S.html "TODO"
+      posts <- getRecentPosts
+      S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> renderPath f) posts
 
     S.get "/login" $ do
-      --debug <- S.param "debug"
       auth <- C.getCookie "auth"
       loginPage auth
 
@@ -115,16 +132,18 @@ main = S.scotty 3000 $ do
       postid <- S.param "id"
       post <- liftIO $ do
         wd <- getCurrentDirectory
-        post <- withCurrentDirectory (wd </> archive) $ readFile $ fromString postid
-        return post
+        withCurrentDirectory (wd </> archive) $ readFile $ fromString postid
       S.text $ fromString post
+
+    S.get "/post" $ do
+      authed <- C.getCookie "auth"
+      postPage authed
 
     S.post "/auth" $ do
       name <- S.param "name"
       pass <- S.param "pass"
       auth name pass
 
-    S.get "/success" $ do
-      S.html . renderHtml $ do
+    S.get "/success" $ S.html . renderHtml $ do
                             H.head $ H.title "You successfully did something!"
                             H.body $ H.a ! A.href "/" $ "Home"
