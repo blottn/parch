@@ -36,10 +36,10 @@ listlink x y = H.li $ H.a ! A.href y $ fromString x
 
 linesToHtml :: [String] -> [AttributeValue] -> H.Html
 linesToHtml (x:[]) (y:[]) = listlink x y
-linesToHtml (x:xs) (y:ys) = do 
+linesToHtml (x:xs) (y:ys) = do
                               listlink x y
                               linesToHtml xs ys
-                                
+
 
 renderPath :: FilePath -> H.Html
 renderPath f = H.li $ H.a ! A.href (fromString ("/get/" ++ (fromString $ takeFileName f))) $ (fromString $ takeBaseName f)
@@ -52,18 +52,27 @@ loginPage True = S.html . renderHtml $ do
                               H.body $ do
                                 H.p "Already logged in!"
                                 H.a ! A.href "/" $ "home"
-                                
-loginPage False = S.html "not logged in"
+
+loginPage False = S.html . renderHtml $ do
+                            H.head $ do
+                              H.title "Parch - login"
+                            H.body $ do
+                              H.a ! A.href "/" $ "home"
+                              H.form ! A.action "/auth" ! A.method "post" $ do
+                                H.input ! A.type_ "text" ! A.name "name"
+                                H.input ! A.type_ "password" ! A.name "pass"
+                                H.input ! A.type_ "submit"
+
 
 auth :: Text -> Text -> S.ActionM()
 auth "admin" "pass" = do
-                        C.setSimpleCookie "auth" "y" 
-                        S.text "success"                        
+                        C.setSimpleCookie "auth" "y"
+                        S.text "success"
 auth _ _ = S.text "oh no"
 
 
 conjoin :: FilePath -> IO((FilePath, UTCTime))
-conjoin x = do 
+conjoin x = do
               wd <- getCurrentDirectory
               time <- withCurrentDirectory (wd </> archive) $ getModificationTime x
               return (x, time)
@@ -97,9 +106,9 @@ main = S.scotty 3000 $ do
         wd <- getCurrentDirectory
         post <- withCurrentDirectory (wd </> archive) $ readFile $ fromString postid
         return post
-      S.html $ fromString post
+      S.text $ fromString post
 
-    S.get "/auth?name=:name&pass=:pass" $ do
+    S.post "/auth" $ do
       name <- S.param "name"
       pass <- S.param "pass"
       auth name pass
