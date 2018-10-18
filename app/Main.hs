@@ -20,6 +20,9 @@ import Data.List
 
 archive = "archive"
 
+pages = [("Blog!","/get/blog"),("recents","/recents"),("login","/login"), ("new post","/post"), ("all","/all"), ("logout","/logout")]
+
+
 index :: S.ActionM()
 index = S.html . renderHtml $ do
           H.head $ do
@@ -27,18 +30,17 @@ index = S.html . renderHtml $ do
           H.body $ do
             H.h1 "Parch blog site"
             H.h2 "Contents"
-            H.ul $ do --TODO convert to tuples
-                linesToHtml ["Blog!","recents", "login", "new post", "all", "logout"] ["/get/blog", "/recents", "/login", "/post", "/all", "/logout" ]
-
+            H.ul $ do
+                linesToHtml pages
 listlink :: String -> AttributeValue -> H.Html
 listlink x y = H.li $ H.a ! A.href y $ fromString x
 
 
-linesToHtml :: [String] -> [AttributeValue] -> H.Html
-linesToHtml (x:[]) (y:[]) = listlink x y
-linesToHtml (x:xs) (y:ys) = do
+linesToHtml :: [(String,AttributeValue)] -> H.Html
+linesToHtml ((x,y):[])= listlink x y
+linesToHtml ((x,y):rest) = do
                               listlink x y
-                              linesToHtml xs ys
+                              linesToHtml rest
 
 
 renderPath :: FilePath -> H.Html
