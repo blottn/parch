@@ -69,7 +69,7 @@ auth :: Text -> Text -> S.ActionM()
 auth "admin" "pass" = do
                         C.setSimpleCookie "auth" "y"
                         S.redirect "/success"
-auth _ _ = S.text "oh no"
+auth _ _ = S.text "incorrect"
 
 
 conjoin :: FilePath -> IO (FilePath, UTCTime)
@@ -92,7 +92,7 @@ getAllPosts = do
 getRecentPosts :: S.ActionM [(FilePath, UTCTime)]
 getRecentPosts = liftIO  $ do
                             files <- getPosts
-                            return $ take 5 $ sortBy (\(_,x) (_,y) -> compare x y) files
+                            return $ take 5 $ sortBy (\(_,x) (_,y) -> compare y x) files
 
 postPage :: Maybe Text -> S.ActionM ()
 postPage Nothing = S.redirect "/"
@@ -100,10 +100,16 @@ postPage (Just "y") = S.html . renderHtml $ do
                                             H.head $ H.title "Parch - Create Post"
                                             H.body $ do
                                               H.h1 "Create Post"
-                                              H.form $ do
-                                                H.input ! A.type_ "text" ! A.placeholder "title"
+                                              H.form ! A.action "/create" ! A.method "post" $ do
+                                                H.input ! A.type_ "text" ! A.name "title" ! A.placeholder "title"
                                                 H.br
-                                                H.input ! A.type_ "text" ! A.placeholder "post"
+                                                H.textarea ! A.cols "40" ! A.rows "6" ! A.name "content" $ ""
+                                                H.input ! A.type_ "submit"
+
+mkpost :: String -> String -> IO ()
+mkpost title content = do
+                        wd <- getCurrentDirectory
+                        writeFile (wd </> archive </> title) content
 
 main = S.scotty 3000 $ do
     S.get "/" index
@@ -143,6 +149,12 @@ main = S.scotty 3000 $ do
       name <- S.param "name"
       pass <- S.param "pass"
       auth name pass
+
+    S.post "/create" $ do
+      title <- S.param "title"
+      content <- S.param "content"
+      liftIO $ mkpost title content
+      S.html "posted"
 
     S.get "/success" $ S.html . renderHtml $ do
                             H.head $ H.title "You successfully did something!"
