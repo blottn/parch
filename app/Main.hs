@@ -28,7 +28,7 @@ index = S.html . renderHtml $ do
             H.h1 "Parch blog site"
             H.h2 "Contents"
             H.ul $ do --TODO convert to tuples
-                linesToHtml ["Blog!","recents", "login", "new post", "all"] ["/get/blog", "/recents", "/login", "/post", "/all" ]
+                linesToHtml ["Blog!","recents", "login", "new post", "all", "logout"] ["/get/blog", "/recents", "/login", "/post", "/all", "/logout" ]
 
 listlink :: String -> AttributeValue -> H.Html
 listlink x y = H.li $ H.a ! A.href y $ fromString x
@@ -45,15 +45,15 @@ renderPath :: FilePath -> H.Html
 renderPath f = H.li $ H.a ! A.href (fromString ("/get/" ++ (fromString $ takeFileName f))) $ (fromString $ takeBaseName f)
 
 
-loginPage :: Bool -> S.ActionM()
-loginPage True = S.html . renderHtml $ do
+loginPage :: (Maybe Text) -> S.ActionM()
+loginPage (Just "y") = S.html . renderHtml $ do
                               H.head $ do
                                 H.title "Parch - login"
                               H.body $ do
                                 H.p "Already logged in!"
                                 H.a ! A.href "/" $ "home"
 
-loginPage False = S.html . renderHtml $ do
+loginPage Nothing = S.html . renderHtml $ do
                             H.head $ do
                               H.title "Parch - login"
                             H.body $ do
@@ -67,7 +67,7 @@ loginPage False = S.html . renderHtml $ do
 auth :: Text -> Text -> S.ActionM()
 auth "admin" "pass" = do
                         C.setSimpleCookie "auth" "y"
-                        S.text "success"
+                        S.redirect "/success"
 auth _ _ = S.text "oh no"
 
 
@@ -96,9 +96,18 @@ main = S.scotty 3000 $ do
       files <- liftIO $ getAllPosts
       S.html "TODO"
 
-    S.get "/login/:debug" $ do
-      debug <- S.param "debug"
-      loginPage debug
+    S.get "/login" $ do
+      --debug <- S.param "debug"
+      auth <- C.getCookie "auth"
+      loginPage auth
+
+    S.get "/logout" $ do
+      C.deleteCookie "auth"
+      S.html . renderHtml $ do
+                            H.head $ H.title "logged out"
+                            H.body $ do
+                              H.p "Successfully logged out"
+                              H.a ! A.href "/" $ "Home"
 
     S.get "/get/:id" $ do
       postid <- S.param "id"
@@ -113,3 +122,7 @@ main = S.scotty 3000 $ do
       pass <- S.param "pass"
       auth name pass
 
+    S.get "/success" $ do
+      S.html . renderHtml $ do
+                            H.head $ H.title "You successfully did something!"
+                            H.body $ H.a ! A.href "/" $ "Home"
