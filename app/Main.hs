@@ -15,35 +15,35 @@ import System.FilePath
 import System.Directory
 import Data.Time
 import Data.List
-
--- Data types:
+import Data.Foldable
 
 archive = "archive"
 
-pages = [("Blog!","/get/blog"),("recents","/recents"),("login","/login"), ("new post","/post"), ("all","/all"), ("logout","/logout")]
+pages = [("recents","/recents"),("login","/login"), ("new post","/post"), ("all","/all"), ("logout","/logout")]
 
 
-index :: S.ActionM()
-index = S.html . renderHtml $ do
+index :: [H.Html] -> S.ActionM()
+index recents = S.html . renderHtml $ do
           H.head $ H.title "Parch"
           H.body $ do
             H.h1 "Parch blog site"
             H.h2 "Contents"
             H.ul $ linesToHtml pages
+            H.h2 "Recents"
+            H.ul $ mapM_ (\x -> x) recents
 
 listlink :: String -> AttributeValue -> H.Html
 listlink x y = H.li $ H.a ! A.href y $ fromString x
 
 
 linesToHtml :: [(String,AttributeValue)] -> H.Html
-linesToHtml [(x,y)]= listlink x y
-linesToHtml ((x,y):rest) = do
-                              listlink x y
+linesToHtml [(name,link)]= listlink name link
+linesToHtml ((name,link):rest) = do
+                              listlink name link
                               linesToHtml rest
 
 
-renderPath :: FilePath -> H.Html
-renderPath f = H.li $ H.a ! A.href (fromString ("/get/" ++ fromString ( takeFileName f))) $ fromString ( takeBaseName f)
+
 
 
 loginPage :: Maybe Text -> S.ActionM()
@@ -81,18 +81,17 @@ conjoin x = do
 getPosts :: IO [(FilePath,UTCTime)]
 getPosts = do
             dir <- getCurrentDirectory
-            contents <- listDirectory $ dir </> archive
-            mapM conjoin contents
+            files <- listDirectory $ dir </> archive
+            contents <- mapM conjoin files
+            return $ sortBy (\(_,x) (_,y) -> compare x y) contents
 
 getAllPosts :: IO [(FilePath, UTCTime)]
-getAllPosts = do
-                files <- getPosts
-                return $ sortBy (\(_,x) (_,y) -> compare x y) files
+getAllPosts = getPosts
 
-getRecentPosts :: S.ActionM [(FilePath, UTCTime)]
-getRecentPosts = liftIO  $ do
-                            files <- getPosts
-                            return $ take 5 $ sortBy (\(_,x) (_,y) -> compare y x) files
+getRecentPosts :: IO [(FilePath, UTCTime)]
+getRecentPosts = do
+                    files <- getPosts
+                    return $ take 5 $ sortBy (\(_,x) (_,y) -> compare y x) files
 
 postPage :: Maybe Text -> S.ActionM ()
 postPage Nothing = S.redirect "/"
@@ -111,16 +110,23 @@ mkpost title content = do
                         dir <- getCurrentDirectory
                         writeFile (dir </> archive </> title) content
 
+renderPath :: FilePath -> H.Html
+renderPath f = H.li $ H.a ! A.href (fromString ("/get/" ++ fromString ( takeFileName f))) $ fromString ( takeBaseName f)
+
+
 main = S.scotty 3000 $ do
-    S.get "/" index
+    S.get "/" $ do
+      recents <- liftIO $ getRecentPosts
+      paths <- mapM (\(f,_) -> return $ renderPath f) recents
+      index paths
 
     S.get "/all" $ do
       posts <- liftIO getAllPosts
       S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> renderPath f) posts
 
-    S.get "/recents" $ do
-      posts <- getRecentPosts
-      S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> renderPath f) posts
+   -- S.get "/recents" $ do
+    --  posts <- getRecentPosts
+    --  S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> renderPath f) posts
 
     S.get "/login" $ do
       auth <- C.getCookie "auth"
