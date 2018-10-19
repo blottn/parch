@@ -30,7 +30,7 @@ index recents = S.html . renderHtml $ do
             H.h2 "Contents"
             H.ul $ linesToHtml pages
             H.h2 "Recents"
-            H.ul $ mapM_ (\x -> x) recents
+            H.ul $  recents
 
 listlink :: String -> AttributeValue -> H.Html
 listlink x y = H.li $ H.a ! A.href y $ fromString x
