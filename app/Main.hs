@@ -124,10 +124,6 @@ main = S.scotty 3000 $ do
       posts <- liftIO getAllPosts
       S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> renderPath f) posts
 
-   -- S.get "/recents" $ do
-    --  posts <- getRecentPosts
-    --  S.html . renderHtml $ H.ul $ mapM_ (\(f,_) -> renderPath f) posts
-
     S.get "/login" $ do
       auth <- C.getCookie "auth"
       loginPage auth
